@@ -3,52 +3,83 @@ import os
 import threading
 import json
 import wx
+import requests
+import time
 
 class MainPanel(wx.Panel):
     def __init__(self, parent):
         super(MainPanel, self).__init__(parent)
-
-        # Tworzymy sizer
+        self.parent = parent
         sizer = wx.BoxSizer(wx.VERTICAL)
-
-        # Dodajemy etykietę
-        login_label = wx.StaticText(self, label="Podaj login")
+        login_label = wx.StaticText(self, label="Podaj email")
         sizer.Add(login_label, 0, wx.ALL | wx.CENTER, 5)
-        self.login_field = wx.TextCtrl(self)
+        self.login_field = wx.TextCtrl(self,style=wx.TE_PROCESS_ENTER)
         sizer.Add(self.login_field,0,wx.ALL | wx.CENTER,5)
         self.password_label = wx.StaticText(self, label="Podaj hasło")
         sizer.Add(self.password_label, 0, wx.ALL | wx.CENTER, 10)
         self.password_field =wx.TextCtrl(self, style=wx.TE_PASSWORD)
         sizer.Add(self.password_field,0,wx.ALL | wx.CENTER,5)
-
-        
-        
-        # Dodajemy przycisk
         button = wx.Button(self, label="Zaloguj się")
-        button.Bind(wx.EVT_BUTTON, self.onSwitchPanel)
+        button.Bind(wx.EVT_BUTTON, self.onLogin)
         sizer.Add(button, 0, wx.ALL | wx.CENTER, 5)
-
-        # Ustawiamy sizer
         self.SetSizer(sizer)
 
-    def onSwitchPanel(self, event):
+    def onLogin(self, event):
         login = self.login_field.GetValue()
         password = self.password_field.GetValue()
-        self.GetParent().listPanel.updateWithSelectedRoles(login,password)
-        self.GetParent().showListPanel()
+        response = self.parent.listPanel.checkLogin(login,password)
+        if response.status_code == 200:
+            print(response)
+            self.parent.showListPanel()
+            
+            
+        else:
+            print(f"Błąd: {response.status_code}")
+            print(response)
+            wx.MessageBox("Nieprawidłowe dane!", "Ostrzeżenie", wx.OK | wx.ICON_WARNING)
+            self.login_field.Clear()
+            self.password_field.Clear()
 
 
 class ListPanel(wx.Panel):
     def __init__(self, parent):
-        super(ListPanel, self).__init__(parent)
-        self.panel = wx.Panel(self)
-        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        super(ListPanel, self).__init__(parent,size=(400,700))
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        
+        # Dodaj widżety do głównego panelu
+        label = wx.StaticText(self, label="Treść głównego panelu")
+        sizer.Add(label, 0, wx.ALL | wx.CENTER, 5)
+        bottom_panel = wx.Panel(self)
 
-    def updateWithSelectedRoles(self, login,password):
-        print(f"Login: {login}, Hasło: {password}")
+        # Dodawanie przycisków do panelu
+        start_button = wx.Button(bottom_panel, label="Start")
+        settings_button = wx.Button(bottom_panel, label="Ustawienia")
 
-        pass
+        # Ustawienie layoutu dla przycisków
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(start_button, 0, wx.ALL, 10)
+        sizer.Add(settings_button, 0, wx.ALL, 10)
+        bottom_panel.SetSizer(sizer)
 
+        # Dodanie panelu do głównego okna
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        main_sizer.AddStretchSpacer()  # Dodaj elastyczny odstęp na górze
+        main_sizer.Add(bottom_panel, 0, wx.EXPAND)
+        self.SetSizer(main_sizer)
+        
+
+
+    def checkLogin(self, login,password):
+        busy_info = wx.BusyInfo("Trwa logowanie...")
+        url = "https://finanse.xce.pl/login"
+        data = {
+            'email': login,
+            'password': password
+        }
+        
+        response = requests.post(url,json=data)
+        del busy_info
+        return response
 
 
 class MainFrame(wx.Frame):
@@ -80,6 +111,7 @@ class MainFrame(wx.Frame):
         self.currentPanel = self.listPanel
         self.listPanel.Show()
         self.Layout()
+
 
     def on_exit(self, event):
         # Zamknięcie aplikacji
