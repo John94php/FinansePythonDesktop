@@ -53,7 +53,7 @@ class ListPanel(wx.Panel):
 
 class MainFrame(wx.Frame):
     def __init__(self):
-        super(MainFrame, self).__init__(None, title="Zajęcia - możliwy kontakt", size=(400, 300))
+        super(MainFrame, self).__init__(None, title="Finanses", size=(400, 300))
         self.mainPanel = MainPanel(self)
         self.listPanel = ListPanel(self)
         self.listPanel.Hide()
